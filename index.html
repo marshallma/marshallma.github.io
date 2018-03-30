@@ -242,6 +242,192 @@
   
   
   <div class="post-block">
+    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/03/30/redis1/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="name" content="Marshall">
+      <meta itemprop="description" content="">
+      <meta itemprop="image" content="/images/rob.jpg">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="满船清梦压星河">
+    </span>
+
+    
+      <header class="post-header">
+
+        
+        
+          <h1 class="post-title" itemprop="name headline">
+                
+                <a class="post-title-link" href="/2018/03/30/redis1/" itemprop="url">redis的基本数据类型详解（一）</a></h1>
+        
+
+        <div class="post-meta">
+          <span class="post-time">
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-calendar-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">发表于</span>
+              
+              <time title="创建于" itemprop="dateCreated datePublished" datetime="2018-03-30T20:42:17+08:00">
+                2018-03-30
+              </time>
+            
+
+            
+
+            
+          </span>
+
+          
+            <span class="post-category" >
+            
+              <span class="post-meta-divider">|</span>
+            
+              <span class="post-meta-item-icon">
+                <i class="fa fa-folder-o"></i>
+              </span>
+              
+                <span class="post-meta-item-text">分类于</span>
+              
+              
+                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+                  <a href="/categories/翻译/" itemprop="url" rel="index">
+                    <span itemprop="name">翻译</span>
+                  </a>
+                </span>
+
+                
+                
+              
+            </span>
+          
+
+          
+            
+          
+
+          
+          
+
+          
+
+          
+
+          
+
+        </div>
+      </header>
+    
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody">
+
+      
+      
+
+      
+        
+          
+            <p>Redis 不仅仅是一个简单的键值对存储，它实际上是支持多种数据类型的数据结构的服务器。当其他传统的键值存储还在处理string类型的key和value时，redis 已经不仅仅支持简单的key-value存储, 它可以处理许多复杂的数据类型。</p>
+<ul>
+<li>二进制安全的string</li>
+<li>Lists: 有序的string链表</li>
+<li>Sets:  去重的容器</li>
+<li>Sorted Sets: 与Sets大致相似，但不同的是， 每个Sorted Set里的元素都有一个float类型的score。 Score用来给集合里的元素排序。我们可以从有序的集合中取出一定范围的数据元素。</li>
+<li>Hashes: 每个元素都由不特定的属性和值对与之关联。属性和值都是string类型， 类似于python,ruby 里的Hashes。</li>
+<li>Bitmap: 把string看成位数组，redis 提供自己的方法单独的对每一位操作，统计位值为1的总数等方法。</li>
+<li>HyoerLogLogs: 这是即将加入redis基本数据类型，主要用于处理集合的基数。</li>
+</ul>
+<p>###Redis Keys<br>Redis Keys 是二进制安全的，这意味这你可以使用任何二进制字符串作为key。 从简单字符串 “foo”到 复杂的图片字节流都可以用作redis的key,包括空字符串。<br>Keys的一些注意点：</p>
+<ul>
+<li>用作key的字符串即不应该太长也不应该太短。举个例子，用一个1024 bytes的字符串作为key，它不仅仅占用了过多的内存空间 而且在查找这个key时也会消耗太多的资源。甚至在算它hash值时也需要很多内存资源。而当字符串太短的时候， 往往不能准确的表达信息， 如 “user:1000:followers” 就比 “u1000flw”好理解，使用一个有实际意义容易理解的key字符串，便于开发维护。字符串key长的时候会消耗资源， 短的时候不能表达准确完整的信息。你需要在两者之间找到平衡点，在兼顾效率的同时，找到一个表达清晰的key字符串。</li>
+<li>key的字符串，应该有个固定的模式，清晰地表达它的实际意义。像”object-type:id”这样的模式是不错的格式。点或者冒号可以用来区分不同的名词， 如 “comment:1234:reply.to” 或者”comment:1234:reply-to”。</li>
+<li>最大的key字符串大小是512MB。</li>
+</ul>
+<p>###Redis Strings<br>字符串是redis中最简单的值类型。它是Memcached的唯一数据类型的，所以对很多redis新手来说并不陌生。<br>当使用Redis Strings时， 我们其实在做一个stirng到string的映射。<br>在缓存HTML片段或者页面的时候，Redis String是一个很好的选择。<br>通过redis-cli, 我们简单使用下Redis String 数据类型。<br> <pre><code>&gt; set mykey somevalue&#x000A;OK&#x000A;&gt; get mykey&#x000A;&quot;somevalue&quot;&#x000A;</code></pre><br> 你可以看到我们用 <a href="https://redis.io/commands/set" target="_blank" rel="noopener">SET</a> 和  <a href="https://redis.io/commands/get" target="_blank" rel="noopener">GET</a> 命令来存取键值。 注意 <a href="https://redis.io/commands/set" target="_blank" rel="noopener">SET</a> 会覆盖任何已存在的一样key的值。<br>所以 <a href="https://redis.io/commands/set" target="_blank" rel="noopener">SET</a> 就像一个赋值操作。值可以是任意的字符串（包括二进制数据），如你可以存储图片的二进制数据在值里。但是一个值不能超过512MB。</p>
+<p><a href="https://redis.io/commands/set" target="_blank" rel="noopener">SET</a>有一些其他有意思的参数， 如当key已存在时 不会覆盖原值，或者与之相反，只有在key存在时， 才能更新。<br>   <pre><code>&gt; set mykey newval nx&#x000A;(nil)&#x000A;&gt; set mykey newval xx&#x000A;OK&#x000A;</code></pre></p>
+<p>   在使用<a href="https://redis.io/commands/incr" target="_blank" rel="noopener">INCR</a>时会默认把string类型的值转成integer，然后再加一，再放回原来的值域中。还有些其它与之类似的命令如 <a href="/commands/incrby">INCRBY</a>,<br>   <a href="https://redis.io/commands/decr" target="_blank" rel="noopener">DECR</a> 和 <a href="/commands/decrby">DECRBY</a>. 它们都是用来做增加操作，只是在使用时略有差别。</p>
+<p>为什么说INCR 是原子性的？<br>即使多个客户端在同时使用INCR 操作同一个key，也不会产生冲突。<br>举个例子, 当多个client同时调用INCR在同一个key上时，<br>client 1 读到 &quot;10&quot;，而 client 2 读到 &quot;10&quot;然后都增加到11，值就变成11了。这种多线程脏读的情况是不可能在使用INCR时发生的。最终结果永远都只会是12。读，改，写这些操作都是原子性的不可能并发操作。</p>
+<p>Redis String还有些其它命令，像<br> <a href="/commands/getset">GETSET</a> 这个命令在赋值的同时会把原来的值作为结果返回。 你可以用它来统计网站上的访问人数，每次增加新的访问次数时， 返回已经累计的访问人数。</p>
+<p>对多个键值对同时进行存取操作可以提高效率。<a href="https://redis.io/commands/mset" target="_blank" rel="noopener">MSET</a> 和 <a href="https://redis.io/commands/mget" target="_blank" rel="noopener">MGET</a>就是用来进行这样的操作的命令。</p>
+<pre><code>&gt; mset a 10 b 20 c 30&#x000A;OK&#x000A;&gt; mget a b c&#x000A;1) &quot;10&quot;&#x000A;2) &quot;20&quot;&#x000A;3) &quot;30&quot;&#x000A;</code></pre>
+
+<p>当使用<a href="https://redis.io/commands/mget" target="_blank" rel="noopener">MGET</a> 时, Redis 返回值得数组。</p>
+<p>###修改和查询key的值<br>有些命令不局限于特定数据类型，但是对redis数据操作非常实用。<br>举个例子， <a href="https://redis.io/commands/exists" target="_blank" rel="noopener">EXISTS</a> 返回0或者1（0表示不存在，1表示存在），还有 <a href="https://redis.io/commands/del" target="_blank" rel="noopener">DEL</a> 可以用来删除键值对。</p>
+<pre><code>&gt; set mykey hello&#x000A;OK&#x000A;&gt; exists mykey&#x000A;(integer) 1&#x000A;&gt; del mykey&#x000A;(integer) 1&#x000A;&gt; exists mykey&#x000A;(integer) 0&#x000A;</code></pre>
+
+<p>从上图你可以看到 <a href="https://redis.io/commands/del" target="_blank" rel="noopener">DEL</a>本身会返回0或者1作为结果，来告诉客户端删除操作是否成功。0表示删除失败，因为key不存在。<br>返回值的类型的的命令<a href="https://redis.io/commands/type" target="_blank" rel="noopener">TYPE</a> 以上三条命令是在与键值操作命令中最主要的三条命令。</p>
+<pre><code>&gt; set mykey x&#x000A;OK&#x000A;&gt; type mykey&#x000A;string&#x000A;&gt; del mykey&#x000A;(integer) 1&#x000A;&gt; type mykey&#x000A;none&#x000A;</code></pre>
+
+<p>###R设置key的过期时间<br>在讨论其它重要的数据类型之前，我们先看下下面比较重要的功能 <strong>Redis expires</strong>。简单来说你可以给一个key设置过期时间。当一个key过期时， 他会被自动销毁就像对key调用<a href="https://redis.io/commands/del" target="_blank" rel="noopener">DEL</a>命令</p>
+<p>Redis expires 简要信息:</p>
+<ul>
+<li>过期时间可以是以秒（seconds）或者毫秒（milliseconds）为单位 </li>
+<li>但是过期时间通常毫秒为单位</li>
+<li>过期时间通常被保存在硬盘上，并不会因为redis是否在运行而更改过期时间</li>
+</ul>
+<p>设置key的过期时间：</p>
+<pre><code>&gt; set key some-value&#x000A;OK&#x000A;&gt; expire key 5&#x000A;(integer) 1&#x000A;&gt; get key (immediately)&#x000A;&quot;some-value&quot;&#x000A;&gt; get key (after some time)&#x000A;(nil)&#x000A;</code></pre>
+
+<p>key被销毁了在两次调用 <a href="https://redis.io/commands/get" target="_blank" rel="noopener">GET</a> 命令之间。因为过期时间被设为5秒. 在上面的例子中我们用 <a href="https://redis.io/commands/expire" target="_blank" rel="noopener">EXPIRE</a> 来设置过期时间。<br>也可以用 <a href="https://redis.io/commands/persist" target="_blank" rel="noopener">PERSIST</a>  H来移除过期时间，那样key就不会被自动销毁。</p>
+<p>我们也可以用 <a href="https://redis.io/commands/set" target="_blank" rel="noopener">SET</a>命令来设置过期十几年 :</p><p></p>
+<p><pre><code>&gt; set key 100 ex 10&#x000A;OK&#x000A;&gt; ttl key&#x000A;(integer) 9&#x000A;</code></pre><br>上面的例子，我们设置一个key的值为<br><code>100</code>,过期时间为10秒. 后面的 <a href="https://redis.io/commands/ttl" target="_blank" rel="noopener">TTL</a> 可以用来显示key还有多久过期</p>
+<p>如果想用毫秒为单位来设置过期时间，可以参考<a href="/commands/pexpire">PEXPIRE</a> 和<br>the <a href="https://redis.io/commands/pttl" target="_blank" rel="noopener">PTTL</a> 命令, 或者 <a href="https://redis.io/commands/set" target="_blank" rel="noopener">SET</a>的相关命令。</p>
+
+          
+        
+      
+    </div>
+    
+    
+    
+
+    
+
+    
+
+    
+
+    <footer class="post-footer">
+      
+
+      
+
+      
+
+      
+      
+        <div class="post-eof"></div>
+      
+    </footer>
+  </div>
+  
+  
+  
+  </article>
+
+
+    
+      
+
+  
+
+  
+  
+  
+
+  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
+  
+  
+  
+  <div class="post-block">
     <link itemprop="mainEntityOfPage" href="http://yoursite.com/2018/03/29/myfirstblog/">
 
     <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
@@ -1543,152 +1729,6 @@
 
 
     
-      
-
-  
-
-  
-  
-  
-
-  <article class="post post-type-normal" itemscope itemtype="http://schema.org/Article">
-  
-  
-  
-  <div class="post-block">
-    <link itemprop="mainEntityOfPage" href="http://yoursite.com/2015/11/04/2015-11-04-writesomething/">
-
-    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
-      <meta itemprop="name" content="Marshall">
-      <meta itemprop="description" content="">
-      <meta itemprop="image" content="/images/rob.jpg">
-    </span>
-
-    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
-      <meta itemprop="name" content="满船清梦压星河">
-    </span>
-
-    
-      <header class="post-header">
-
-        
-        
-          <h1 class="post-title" itemprop="name headline">
-                
-                <a class="post-title-link" href="/2015/11/04/2015-11-04-writesomething/" itemprop="url">从这开始</a></h1>
-        
-
-        <div class="post-meta">
-          <span class="post-time">
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-calendar-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">发表于</span>
-              
-              <time title="创建于" itemprop="dateCreated datePublished" datetime="2015-11-04T00:00:00+08:00">
-                2015-11-04
-              </time>
-            
-
-            
-
-            
-          </span>
-
-          
-            <span class="post-category" >
-            
-              <span class="post-meta-divider">|</span>
-            
-              <span class="post-meta-item-icon">
-                <i class="fa fa-folder-o"></i>
-              </span>
-              
-                <span class="post-meta-item-text">分类于</span>
-              
-              
-                <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
-                  <a href="/categories/history/" itemprop="url" rel="index">
-                    <span itemprop="name">history</span>
-                  </a>
-                </span>
-
-                
-                
-              
-            </span>
-          
-
-          
-            
-          
-
-          
-          
-
-          
-
-          
-
-          
-
-        </div>
-      </header>
-    
-
-    
-    
-    
-    <div class="post-body" itemprop="articleBody">
-
-      
-      
-
-      
-        
-          宜早不宜迟，宜快不宜慢
-          <!--noindex-->
-          <div class="post-button text-center">
-            <a class="btn" href="/2015/11/04/2015-11-04-writesomething/">
-              阅读全文 &raquo;
-            </a>
-          </div>
-          <!--/noindex-->
-        
-      
-    </div>
-    
-    
-    
-
-    
-
-    
-
-    
-
-    <footer class="post-footer">
-      
-
-      
-
-      
-
-      
-      
-        <div class="post-eof"></div>
-      
-    </footer>
-  </div>
-  
-  
-  
-  </article>
-
-
-    
   </section>
 
   
@@ -1743,7 +1783,7 @@
               
                 <a href="/archives/">
               
-                  <span class="site-state-item-count">13</span>
+                  <span class="site-state-item-count">14</span>
                   <span class="site-state-item-name">日志</span>
                 </a>
               </div>
@@ -1754,7 +1794,7 @@
               
               <div class="site-state-item site-state-categories">
                 <a href="/categories/index.html">
-                  <span class="site-state-item-count">3</span>
+                  <span class="site-state-item-count">4</span>
                   <span class="site-state-item-name">分类</span>
                 </a>
               </div>
@@ -1765,7 +1805,7 @@
               
               <div class="site-state-item site-state-tags">
                 <a href="/tags/index.html">
-                  <span class="site-state-item-count">2</span>
+                  <span class="site-state-item-count">3</span>
                   <span class="site-state-item-name">标签</span>
                 </a>
               </div>
